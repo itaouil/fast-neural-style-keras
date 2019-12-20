@@ -5,9 +5,10 @@ from loss import dummy_loss,StyleReconstructionRegularizer,FeatureReconstruction
 from keras.optimizers import Adam, SGD,Nadam,Adadelta
 from keras.preprocessing.image import ImageDataGenerator
 from keras import backend as K
+# from tensorflow.python.keras.backend import backend as K
 from scipy.misc import imsave
 import time
-import numpy as np 
+import numpy as np
 import argparse
 import h5py
 import tensorflow as tf
@@ -23,13 +24,13 @@ import nets
 # from 6o6o's fork. https://github.com/6o6o/chainer-fast-neuralstyle/blob/master/generate.py
 def original_colors(original, stylized,original_color):
     # Histogram normalization in v channel
-    ratio=1. - original_color 
+    ratio=1. - original_color
 
     hsv = color.rgb2hsv(original/255)
     hsv_s = color.rgb2hsv(stylized/255)
 
     hsv_s[:,:,2] = (ratio* hsv_s[:,:,2]) + (1-ratio)*hsv [:,:,2]
-    img = color.hsv2rgb(hsv_s)    
+    img = color.hsv2rgb(hsv_s)
     return img
 
 def blend(original, stylized, alpha):
@@ -47,7 +48,7 @@ def median_filter_all_colours(im_small, window_size):
         ims.append(im_conv_d)
 
     im_conv = np.stack(ims, axis=2).astype("uint8")
-    
+
     return im_conv
 
 def load_weights(model,file_path):
@@ -62,7 +63,7 @@ def load_weights(model,file_path):
         ts(weights)
 
     f.close()
-    
+
     print('Pretrained Model weights loaded.')
 
 def main(args):
@@ -86,9 +87,9 @@ def main(args):
 
     model.load_weights("pretrained/"+style+'_weights.h5',by_name=False)
 
-    
+
     t1 = time.time()
-    y = net.predict(x)[0] 
+    y = net.predict(x)[0]
     y = crop_image(y, aspect_ratio)
 
     print("process: %s" % (time.time() -t1))
@@ -105,8 +106,8 @@ def main(args):
         y = original_colors(ox,y,original_color )
 
     imsave('%s_output.png' % output_file, y)
-        
- 
+
+
 
 
 if __name__ == "__main__":

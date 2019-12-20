@@ -32,7 +32,7 @@ class InputNormalize(Layer):
 
 
 
-def conv_bn_relu(nb_filter, nb_row, nb_col,stride):   
+def conv_bn_relu(nb_filter, nb_row, nb_col,stride):
     def conv_func(x):
         x = Conv2D(nb_filter, (nb_row, nb_col), strides=stride,padding='same')(x)
         x = BatchNormalization()(x)
@@ -115,14 +115,14 @@ class VGGNormalize(Layer):
 
     def call(self, x, mask=None):
         # No exact substitute for set_subtensor in tensorflow
-        # So we subtract an approximate value       
-        
+        # So we subtract an approximate value
+
         # 'RGB'->'BGR'
-        x = x[:, :, :, ::-1]       
+        x = x[:, :, :, ::-1]
         x -= 120
         #img_util.preprocess_image(style_image_path, img_width, img_height)
         return x
-   
+
 
     def compute_output_shape(self,input_shape):
         return input_shape
@@ -135,7 +135,7 @@ class ReflectionPadding2D(Layer):
         super(ReflectionPadding2D, self).__init__(**kwargs)
 
         if dim_ordering == 'default':
-            dim_ordering = K.image_dim_ordering()
+            dim_ordering = K.common.image_dim_ordering()
 
         self.padding = padding
         if isinstance(padding, dict):
@@ -169,18 +169,18 @@ class ReflectionPadding2D(Layer):
         if dim_ordering not in {'tf'}:
             raise ValueError('dim_ordering must be in {tf}.')
         self.dim_ordering = dim_ordering
-        self.input_spec = [InputSpec(ndim=4)] 
+        self.input_spec = [InputSpec(ndim=4)]
 
 
     def call(self, x, mask=None):
         top_pad=self.top_pad
         bottom_pad=self.bottom_pad
         left_pad=self.left_pad
-        right_pad=self.right_pad        
-        
+        right_pad=self.right_pad
+
         paddings = [[0,0],[left_pad,right_pad],[top_pad,bottom_pad],[0,0]]
 
-        
+
         return tf.pad(x,paddings, mode='REFLECT', name=None)
 
     def compute_output_shape(self,input_shape):
@@ -194,36 +194,37 @@ class ReflectionPadding2D(Layer):
                     input_shape[3])
         else:
             raise ValueError('Invalid dim_ordering:', self.dim_ordering)
-            
+
     def get_config(self):
         config = {'padding': self.padding}
         base_config = super(ReflectionPadding2D, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))     
-    
-    
+        return dict(list(base_config.items()) + list(config.items()))
+
+
 class UnPooling2D(UpSampling2D):
     def __init__(self, size=(2, 2)):
         super(UnPooling2D, self).__init__(size)
 
-  
+
     def call(self, x, mask=None):
-        shapes = x.get_shape().as_list() 
+        shapes = x.get_shape().as_list()
         w = self.size[0] * shapes[1]
         h = self.size[1] * shapes[2]
-        return tf.image.resize_nearest_neighbor(x, (w,h))
+        # return tf.image.resize_nearest_neighbor(x, (w,h))
+        return tf.image.resize(x, (w,h))
 
-        
+
 
 class InstanceNormalize(Layer):
     def __init__(self, **kwargs):
         super(InstanceNormalize, self).__init__(**kwargs)
         self.epsilon = 1e-3
-            
+
 
     def call(self, x, mask=None):
         mean, var = tf.nn.moments(x, [1, 2], keep_dims=True)
         return tf.div(tf.subtract(x, mean), tf.sqrt(tf.add(var, self.epsilon)))
 
-                                                 
+
     def compute_output_shape(self,input_shape):
         return input_shape
