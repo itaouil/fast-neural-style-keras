@@ -32,7 +32,7 @@ def display_img(i, x, style, is_val=False):
         fname = f"images/output/{style}_{i}_val.png"
     else:
         fname = f"images/output/{style}_{i}.png"
-    
+
     # Save image
     imsave(fname, img)
     print('Image saved as', fname)
@@ -78,7 +78,7 @@ def main(args):
     # Epochs
     nb_epoch = 82785 * 2
     train_batchsize =  1
-    train_image_path = "images/train/"
+    train_image_path = "/home/data/MSCOCO/train2014"
 
     learning_rate = 1e-3 #1e-3
     optimizer = Adam() # Adam(lr=learning_rate,beta_1=0.99)
@@ -110,7 +110,7 @@ def main(args):
     # Loop over generate data (MSCOCO dataset)
     for x in datagen.flow_from_directory(train_image_path, class_mode=None, batch_size=train_batchsize,
         target_size=(img_width, img_height), shuffle=False):
-        
+
         # Break if over epochs
         if i > nb_epoch:
             break
@@ -122,7 +122,7 @@ def main(args):
                 print("skip to: %d" % i)
 
             continue
-        
+
 
         hist = model.train_on_batch(x, dummy_y)
 
