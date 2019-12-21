@@ -1,64 +1,83 @@
-from keras.layers import Input
-from keras.layers.merge import concatenate
-from keras.models import Model,Sequential
-from layers import InputNormalize,VGGNormalize,ReflectionPadding2D,Denormalize,conv_bn_relu,res_conv,dconv_bn_nolinear
-from loss import StyleReconstructionRegularizer,FeatureReconstructionRegularizer,TVRegularizer
-from keras import backend as K
-from VGG16 import VGG16
 import img_util
+from VGG16 import VGG16
+from keras import backend as K
+from keras.layers import Input
+from keras.models import Model,Sequential
+from keras.layers.merge import concatenate
+from loss import StyleReconstructionRegularizer,FeatureReconstructionRegularizer,TVRegularizer
+from layers import InputNormalize,VGGNormalize,ReflectionPadding2D,Denormalize,conv_bn_relu,res_conv,dconv_bn_nolinear
 
 
+def image_transform_net(img_width, img_height, tv_weight=1):
+    """
+        Image tranform
+        network model.
+    """
+    # Input layer as an RGB image
+    x = Input(shape=(img_width, img_height, 3))
 
-
-
-def image_transform_net(img_width,img_height,tv_weight=1):
-    x = Input(shape=(img_width,img_height,3))
+    # Normalize input image
     a = InputNormalize()(x)
-    a = ReflectionPadding2D(padding=(40,40),input_shape=(img_width,img_height,3))(a)
-    a = conv_bn_relu(32, 9, 9, stride=(1,1))(a)
-    a = conv_bn_relu(64, 9, 9, stride=(2,2))(a)
-    a = conv_bn_relu(128, 3, 3, stride=(2,2))(a)
-    for i in range(5):
-        a = res_conv(128,3,3)(a)
-    a = dconv_bn_nolinear(64,3,3)(a)
-    a = dconv_bn_nolinear(32,3,3)(a)
-    a = dconv_bn_nolinear(3,9,9,stride=(1,1),activation="tanh")(a)
+
+    # Pad image
+    a = ReflectionPadding2D(padding=(40, 40), input_shape=(img_width, img_height, 3))(a)
+
+    # Extract feature maps
+    a = conv_bn_relu(32, 9, 9, stride=(1, 1))(a)
+    a = conv_bn_relu(64, 3, 3, stride=(2, 2))(a) # The previous kernel size was 9x9
+    a = conv_bn_relu(128, 3, 3, stride=(2, 2))(a)
+    for _ in range(5):
+        a = res_conv(128, 3, 3)(a)
+    a = dconv_bn_nolinear(64, 3, 3)(a)
+    a = dconv_bn_nolinear(32, 3, 3)(a)
+    a = dconv_bn_nolinear(3, 9, 9, stride=(1,1), activation="tanh")(a)
+
     # Scale output to range [0, 255] via custom Denormalize layer
     y = Denormalize(name='transform_output')(a)
-    
+
+    # Create model
     model = Model(inputs=x, outputs=y)
-    
+
+    # Total variation regularizer
     if tv_weight > 0:
-        add_total_variation_loss(model.layers[-1],tv_weight)
-        
-    return model 
+        add_total_variation_loss(model.layers[-1], tv_weight)
+
+    return model
 
 
+def loss_net(x_in, trux_x_in,width, height, style_image_path, content_weight, style_weight):
+    """
+        Fixed loss network:
 
-
-def loss_net(x_in, trux_x_in,width, height,style_image_path,content_weight,style_weight):
+        Pre-trained VGG16 on ImageNet.
+    """
     # Append the initial input to the FastNet input to the VGG inputs
     x = concatenate([x_in, trux_x_in], axis=0)
-    
+
     # Normalize the inputs via custom VGG Normalization layer
     x = VGGNormalize(name="vgg_normalize")(x)
 
-    vgg = VGG16(include_top=False,input_tensor=x)
+    # VGG network instance
+    vgg = VGG16(include_top=False, input_tensor=x)
 
+    # Populate VGG network
     vgg_output_dict = dict([(layer.name, layer.output) for layer in vgg.layers[-18:]])
     vgg_layers = dict([(layer.name, layer) for layer in vgg.layers[-18:]])
 
+    # Style loss 
     if style_weight > 0:
-        add_style_loss(vgg,style_image_path , vgg_layers, vgg_output_dict, width, height,style_weight)   
+        add_style_loss(vgg, style_image_path, vgg_layers, vgg_output_dict, width, height, style_weight)
 
+    # Content loss
     if content_weight > 0:
-        add_content_loss(vgg_layers,vgg_output_dict,content_weight)
+        add_content_loss(vgg_layers, vgg_output_dict, content_weight)
 
     # Freeze all VGG layers
     for layer in vgg.layers[-19:]:
         layer.trainable = False
 
     return vgg
+
 
 def add_style_loss(vgg,style_image_path,vgg_layers,vgg_output_dict,img_width, img_height,weight):
     style_img = img_util.preprocess_image(style_image_path, img_width, img_height)
@@ -86,6 +105,7 @@ def add_style_loss(vgg,style_image_path,vgg_layers,vgg_output_dict,img_width, im
 
         layer.add_loss(style_loss)
 
+
 def add_content_loss(vgg_layers,vgg_output_dict,weight):
     # Feature Reconstruction Loss
     content_layer = 'block3_conv3'
@@ -101,4 +121,3 @@ def add_total_variation_loss(transform_output_layer,weight):
     layer = transform_output_layer  # Output layer
     tv_regularizer = TVRegularizer(weight)(layer)
     layer.add_loss(tv_regularizer)
-
