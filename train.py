@@ -16,19 +16,24 @@ from keras.callbacks import TensorBoard
 from keras.models import Model,Sequential
 from keras.optimizers import Adam, SGD,RMSprop
 from keras.preprocessing.image import ImageDataGenerator
-from layers import VGGNormalize,ReflectionPadding2D,Denormalize,conv_bn_relu,res_conv,dconv_bn_nolinear
-from loss import dummy_loss,StyleReconstructionRegularizer,FeatureReconstructionRegularizer,TVRegularizer
+from layers import VGGNormalize, ReflectionPadding2D, Denormalize, conv_bn_relu, res_conv, dconv_bn_nolinear
+from loss import dummy_loss, StyleReconstructionRegularizer, FeatureReconstructionRegularizer, TVRegularizer
 
 
-def display_img(i,x,style,is_val=False):
-    # save current generated image
-    img = x #deprocess_image(x)
+def display_img(i, x, style, is_val=False):
+    """
+        Display image.
+    """
+    # Currently generated image
+    img = x
     if is_val:
         #img = ndimage.median_filter(img, 3)
 
-        fname = 'images/output/%s_%d_val.png' % (style,i)
+        fname = f"images/output/{style}_{i}_val.png"
     else:
-        fname = 'images/output/%s_%d.png' % (style,i)
+        fname = f"images/output/{style}_{i}.png"
+    
+    # Save image
     imsave(fname, img)
     print('Image saved as', fname)
 
@@ -56,7 +61,10 @@ def main(args):
     # Get relative path of style image
     style_image_path = get_style_img_path(style)
 
-    # Create image transform network model
+    # Create image transform network model.
+    # Also note that the style and content losses
+    # are already added when creating the image network
+    # model
     net = nets.image_transform_net(img_width, img_height, tv_weight)
     model = nets.loss_net(net.output,
                           net.input,
@@ -75,30 +83,46 @@ def main(args):
     learning_rate = 1e-3 #1e-3
     optimizer = Adam() # Adam(lr=learning_rate,beta_1=0.99)
 
-    model.compile(optimizer,  dummy_loss)  # Dummy loss since we are learning from regularizes
+    # Dummy loss since we are learning from regularizes
+    model.compile(optimizer,  dummy_loss)
 
+    # Keras data generator
     datagen = ImageDataGenerator()
 
-    dummy_y = np.zeros((train_batchsize, img_width, img_height, 3)) # Dummy output, not used since we use regularizers to train
+    # Dummy output, not used since we use regularizers to train
+    dummy_y = np.zeros((train_batchsize, img_width, img_height, 3))
 
-    #model.load_weights(style+'_weights.h5',by_name=False)
+    # Uncomment the line below if you want to keep
+    # training a previously saved model
+    # model.load_weights(style+'_weights.h5',by_name=False)
 
+    # Skip to a particular
+    # epoch in case you wanna
+    # resume from that epoch
     skip_to = 0
 
-    i=0
+    # Starting epoch
+    i = 0
+
+    # Time is essential
     t1 = time.time()
+
+    # Loop over generate data (MSCOCO dataset)
     for x in datagen.flow_from_directory(train_image_path, class_mode=None, batch_size=train_batchsize,
         target_size=(img_width, img_height), shuffle=False):
+        
+        # Break if over epochs
         if i > nb_epoch:
             break
 
+        # Skip to particular epoch
         if i < skip_to:
             i += train_batchsize
-            if i % 1000 ==0:
+            if i % 1000 == 0:
                 print("skip to: %d" % i)
 
             continue
-
+        
 
         hist = model.train_on_batch(x, dummy_y)
 
@@ -114,7 +138,7 @@ def main(args):
             display_img(i, val_x[0],style, True)
             model.save_weights(style+'_weights.h5')
 
-        i+=train_batchsize
+        i += train_batchsize
 
 
 if __name__ == "__main__":
