@@ -44,7 +44,7 @@ def get_style_img_path(style):
         the style image to train
         on is stored.
     """
-    return f"images/pidgeot_styles/task1/{style}.jpg"
+    return f"images/style/{style}.jpg"
 
 
 def main(args):
