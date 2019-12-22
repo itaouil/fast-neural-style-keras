@@ -1,6 +1,4 @@
 *.pyc
 
-*.png
-*.jpg
 images/output
 images/train

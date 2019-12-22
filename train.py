@@ -78,10 +78,11 @@ def main(args):
     # Epochs
     nb_epoch = 40000
     train_batchsize =  4
+    # train_image_path = "images/style/"
     train_image_path = "/home/data/MSCOCO/train2014"
 
     learning_rate = 1e-3 #1e-3
-    optimizer = Adam() # Adam(lr=learning_rate,beta_1=0.99)
+    optimizer = Adam(learning_rate=learning_rate)
 
     # Dummy loss since we are learning from regularizes
     model.compile(optimizer,  dummy_loss)
