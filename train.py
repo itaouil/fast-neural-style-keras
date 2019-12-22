@@ -44,7 +44,7 @@ def get_style_img_path(style):
         the style image to train
         on is stored.
     """
-    return f"images/style/{style}.jpg"
+    return f"images/pidgeot_styles/task1/{style}.jpg"
 
 
 def main(args):
@@ -76,8 +76,8 @@ def main(args):
     model.summary()
 
     # Epochs
-    nb_epoch = 82785 * 2
-    train_batchsize =  1
+    nb_epoch = 40000
+    train_batchsize =  4
     train_image_path = "/home/data/MSCOCO/train2014"
 
     learning_rate = 1e-3 #1e-3
@@ -123,7 +123,6 @@ def main(args):
 
             continue
 
-
         hist = model.train_on_batch(x, dummy_y)
 
         if i % 50 == 0:
@@ -136,7 +135,12 @@ def main(args):
 
             display_img(i, x[0], style)
             display_img(i, val_x[0],style, True)
+
+            # Save model
             model.save_weights(style+'_weights.h5')
+        
+        # Save model (to be removed, just check if works)
+        model.save_weights(f"pidgeots_{style}_weights.h5")
 
         i += train_batchsize
 
